@@ -3,6 +3,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Post from "../../components/post/Post";
 import s from "./Home.module.scss";
+import api from "../../services/api";
 
 export default function Home() {
   const [posts, setPosts] = useState([]);
@@ -12,6 +13,67 @@ export default function Home() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  //Listar postagens
+
+  useEffect(()=>{
+    async function carregarPosts() {
+      try {
+        const res = await api.get("/posts")
+        setPosts(res.data);
+      } catch(error) {
+        console.log("Erro ao carregar posts" + error)
+      }
+    }
+    carregarPosts();
+  }, [])
+
+  // Editar ou criar uma nova postagem
+  
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    try {
+      if (editandoId) {
+        await api.put(`/posts/${editandoId}`, {
+          titulo,
+          conteudo,
+        })
+        setEditandoId(null);
+      } else {
+        await api.post("/posts", {titulo, conteudo})
+      }
+
+      const res = await api.get("/posts");
+      setPosts(res.data)
+
+      setTitulo("");
+      setConteudo("")
+    } catch (error) {
+      console.log("Error ao salvar a postagem" + error)
+    }
+  } 
+
+  // Iniciar a edição
+
+  function handleEdit(post) {
+    setTitulo(post.titulo);
+    setConteudo(post.conteudo);
+    setEditandoId(post.post_id);
+  }
+
+  // Deletar postagens
+
+  async function handleDelete(id) {
+    const confirmacao = confirm("Tem certeza que deseja deletar este post?")
+    if (!confirmacao) return;
+
+    try {
+      await api.delete(`/posts/${id}`)
+      setPosts((prev) => prev.filter((post) => post.post_id !== id))
+    } catch (error) {
+      console.log("Erro ao deletar a postagem" + error)
+    }
+  }
   
   function handleLogout() {
     logout();          // remove token
@@ -27,7 +89,7 @@ export default function Home() {
         </button>
       </div>
       {/* FORM DE POSTAGEM */}
-        <form className={s.postForm} onSubmit={}>
+        <form className={s.postForm} onSubmit={handleSubmit}>
           <input
             placeholder="Título"
             value={titulo}
